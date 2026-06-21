@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pseudocode Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #090c10;
+      --surface:  #0d1117;
+      --card:     #111820;
+      --border:   #1e2a38;
+      --accent:   #3b82f6;
+      --accent2:  #10b981;
+      --accent3:  #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --mono:     'JetBrains Mono', monospace;
+      --display:  'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--display);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── grid bg ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── glow orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 500px; height: 500px; background: rgba(59,130,246,0.12); top: -150px; left: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(16,185,129,0.08); bottom: 100px; right: -80px; }
+
+    /* ── navbar ── */
+    nav {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(9,12,16,0.7);
+      position: sticky;
+      top: 0;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+
+    .nav-logo .bracket { color: var(--muted); }
+
+    .nav-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+
+    .hero-tag {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent2);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-tag::before,
+    .hero-tag::after {
+      content: '';
+      width: 32px;
+      height: 1px;
+      background: var(--accent2);
+      opacity: 0.5;
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 7vw, 88px);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      margin-bottom: 28px;
+      max-width: 900px;
+    }
+
+    .hero h1 .line-1 { color: var(--text); display: block; }
+    .hero h1 .line-2 {
+      display: block;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-family: var(--mono);
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.8;
+      margin-bottom: 48px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(59,130,246,0.35);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── code preview strip ── */
+    .code-strip {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      overflow: hidden;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      background: rgba(13,17,23,0.8);
+      margin-bottom: 80px;
+    }
+
+    .code-strip-inner {
+      display: flex;
+      gap: 48px;
+      white-space: nowrap;
+      animation: marquee 18s linear infinite;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .code-strip span { color: var(--muted); }
+    .code-strip .kw  { color: var(--accent); }
+    .code-strip .val { color: var(--accent3); }
+    .code-strip .fn  { color: var(--accent2); }
+
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ── features ── */
+    .features {
+      position: relative;
+      z-index: 1;
+      padding: 0 48px 100px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .feature-card {
+      background: var(--card);
+      padding: 36px 32px;
+      transition: background 0.2s;
+    }
+
+    .feature-card:hover { background: #141c26; }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    .icon-blue  { background: rgba(59,130,246,0.12); }
+    .icon-green { background: rgba(16,185,129,0.12); }
+    .icon-amber { background: rgba(245,158,11,0.12); }
+
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-card p {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* ── pipeline section ── */
+    .pipeline {
+      position: relative;
+      z-index: 1;
+      padding: 0 48px 100px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .pipeline-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .pipeline-step {
+      flex: 1;
+      min-width: 120px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 16px;
+      text-align: center;
+      position: relative;
+    }
+
+    .pipeline-step + .pipeline-step { margin-left: -1px; border-radius: 0; }
+    .pipeline-step:first-child { border-radius: 8px 0 0 8px; }
+    .pipeline-step:last-child  { border-radius: 0 8px 8px 0; }
+
+    .step-num {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .step-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 24px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    footer p {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── animations ── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(24px);
+      animation: fadeUp 0.7s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.35s; }
+    .delay-4 { animation-delay: 0.5s; }
+
+    /* ── responsive ── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .hero { padding: 60px 20px 40px; }
+      .features, .pipeline { padding-left: 20px; padding-right: 20px; }
+      footer { flex-direction: column; gap: 8px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <!-- navbar -->
+  <nav>
+    <div class="nav-logo">
+      <span class="bracket">&lt;/&gt;</span>
+      Pseudocode Visualizer
+    </div>
+    <span class="nav-badge">learn simply</span>
+  </nav>
+
+  <!-- hero -->
+  <section class="hero">
+    <div class="hero-tag fade-up">Compiler Design Project</div>
+
+    <h1 class="fade-up delay-1">
+      <span class="line-1">See inside your</span>
+      <span class="line-2">compiler.</span>
+    </h1>
+
+    <p class="fade-up delay-2">
+      Write code. Watch how the lexer, parser, and executor work — symbol table and execution stack updated live, step by step.
+    </p>
+
+    <div class="hero-actions fade-up delay-3">
+      <button class="btn-primary" onclick="startApp()">
+        ▶ &nbsp;Launch Visualizer
+      </button>
+      <button class="btn-secondary" onclick="scrollToFeatures()">
+        See how it works
+      </button>
+    </div>
+  </section>
+
+  <!-- scrolling code strip -->
+  <div class="code-strip">
+    <div class="code-strip-inner">
+      <!-- duplicate for seamless loop -->
+      <span><span class="kw">int</span> a = <span class="val">5</span> + <span class="val">3</span>;</span>
+      <span>LOAD_CONST <span class="val">5</span></span>
+      <span>LOAD_CONST <span class="val">3</span></span>
+      <span>ADD</span>
+      <span>STORE <span class="fn">a</span></span>
+      <span><span class="kw">int</span> b = a * <span class="val">2</span>;</span>
+      <span>LOAD_VAR <span class="fn">a</span></span>
+      <span>LOAD_CONST <span class="val">2</span></span>
+      <span>MUL</span>
+      <span>STORE <span class="fn">b</span></span>
+      <span><span class="fn">print</span>(b);</span>
+      <span>PRINT → OUTPUT: <span class="val">16</span></span>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <span><span class="kw">int</span> a = <span class="val">5</span> + <span class="val">3</span>;</span>
+      <span>LOAD_CONST <span class="val">5</span></span>
+      <span>LOAD_CONST <span class="val">3</span></span>
+      <span>ADD</span>
+      <span>STORE <span class="fn">a</span></span>
+      <span><span class="kw">int</span> b = a * <span class="val">2</span>;</span>
+      <span>LOAD_VAR <span class="fn">a</span></span>
+      <span>LOAD_CONST <span class="val">2</span></span>
+      <span>MUL</span>
+      <span>STORE <span class="fn">b</span></span>
+      <span><span class="fn">print</span>(b);</span>
+      <span>PRINT → OUTPUT: <span class="val">16</span></span>
+    </div>
+  </div>
+
+  <!-- features -->
+  <section class="features" id="features">
+    <div class="section-label">Core features</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon icon-blue">⊞</div>
+        <h3>Symbol Table Tracking</h3>
+        <p>Every variable declaration and assignment updates the symbol table in real time. See name, type, and current value at each step.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-green">⧉</div>
+        <h3>Execution Stack</h3>
+        <p>Watch the symbol table stack grow and shrink as arithmetic operations push and pop values during execution.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-amber">◈</div>
+        <h3>Step-by-Step Control</h3>
+        <p>Step forward one instruction at a time, or run at adjustable speed. Pause anytime to inspect the current state.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- pipeline -->
+  <section class="pipeline">
+    <div class="section-label">Compiler pipeline</div>
+    <div class="pipeline-steps">
+      <div class="pipeline-step">
+        <div class="step-num">01</div>
+        <div class="step-name">Lexer</div>
+        <div class="step-desc">Tokens</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">02</div>
+        <div class="step-name">Parser</div>
+        <div class="step-desc">AST</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">03</div>
+        <div class="step-name">Semantic</div>
+        <div class="step-desc">Symbols</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">04</div>
+        <div class="step-name">IR Gen</div>
+        <div class="step-desc">Instructions</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">05</div>
+        <div class="step-name">Pseducode generator</div>
+        <div class="step-desc">Pseducode code</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">06</div>
+        <div class="step-name">Executor</div>
+        <div class="step-desc">Output</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><h6>PHOENIX<h6></h6></p>
+    <p>Pseudocode Visualizer — Compiler Design, Sem 6</p>
+    <p>Ayush Dabral, Mohit Bhatt, Kamal Singh, Kunal Rana</p>
+  </footer>
+
+  <script>
+    function startApp() {
+      window.location.href = 'app.html';
+    }
+
+    function scrollToFeatures() {
+      document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+
+</body>
+</html>

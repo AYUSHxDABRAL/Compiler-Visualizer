@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pseudocode Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+ 
+  <!-- ── NAVBAR ── -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="index.html" class="nav-logo">
+        <span class="bracket">&lt;/&gt;</span>
+        Pseudocode Visualizer
+      </a>
+    </div>
+ 
+    <div class="nav-center">
+      <!-- Sample loader -->
+      <div class="dropdown-wrap">
+        <select id="sampleSelect" onchange="loadSample(this.value)">
+          <option value="">Load sample...</option>
+          <option value="basic">Basic arithmetic</option>
+        </select>
+      </div>
+ 
+      <!-- Compile -->
+      <button id="btnCompile" class="btn-compile" onclick="handleCompile().catch(e => showErrors([e.message]))">
+        <span class="btn-icon">⚡</span> Compile
+      </button>
+    </div>
+ 
+    <div class="nav-right">
+      <!-- Step controls -->
+      <button id="btnStepBack" class="ctrl-btn" onclick="handleStepBack()" disabled title="Step back">◀</button>
+      <button id="btnStepFwd"  class="ctrl-btn" onclick="handleStepForward()" disabled title="Step forward">▶</button>
+      <button id="btnRun"      class="ctrl-btn" onclick="handleRun()" disabled title="Run all">▶▶</button>
+      <button id="btnReset"    class="ctrl-btn" onclick="handleReset()" disabled title="Reset">↺</button>
+ 
+      <!-- Speed -->
+      <div class="speed-wrap">
+        <span class="speed-label">Speed</span>
+        <input type="range" id="speedSlider" min="50" max="1000" value="300" step="50"
+               oninput="handleSpeed(this.value)">
+        <span id="speedVal" class="speed-label">300ms</span>
+      </div>
+ 
+      <!-- Mode toggle -->
+      <button id="btnMode" class="btn-mode js-mode" onclick="toggleMode()" title="Switch compiler mode">
+        <span id="modeLabel">Browser Mode (JS)</span>
+      </button>
+    </div>
+  </nav>
+ 
+  <!-- STATUS BAR -->
+  <div id="statusBar" class="status-bar hidden">
+    <span id="statusDot" class="status-dot"></span>
+    <span id="statusText">—</span>
+  </div>
+ 
+  <!-- ── MAIN LAYOUT ── -->
+  <div class="app-body">
+ 
+    <!-- LEFT: source editor -->
+    <div class="pane pane-editor">
+      <div class="pane-header">
+        <span class="pane-title">SOURCE CODE</span>
+        <span id="cursorPos" class="pane-meta">Ln 1, Col 1</span>
+      </div>
+      <div class="editor-wrap">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea
+          id="codeEditor"
+          class="code-editor"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="// Write your code here&#10;int a = 5 + 3;&#10;print(a);"
+          oninput="handleEditorInput()"
+          onkeydown="handleEditorKey(event)"
+          onscroll="syncScroll()"
+          onclick="updateCursor()"
+          onkeyup="updateCursor()"
+        ></textarea>
+      </div>
+    </div>
+ 
+    <!-- MIDDLE: output tabs -->
+    <div class="pane pane-output">
+      <div class="pane-header tabs-header">
+        <button class="tab active" onclick="switchTab('pseudocode', this)">Pseudocode</button>
+        <button class="tab" onclick="switchTab('ast', this)">AST</button>
+        <button class="tab" onclick="switchTab('tokens', this)">Tokens</button>
+        <button class="tab" onclick="switchTab('ir', this)">IR Code</button>
+      </div>
+ 
+      <div id="tab-pseudocode" class="tab-content active">
+        <div class="empty-state" id="pseudoEmpty">
+          <div class="empty-icon">⚡</div>
+          <p>Compile code to see pseudocode</p>
+        </div>
+        <div id="pseudocodeOutput" class="pseudo-output"></div>
+      </div>
+ 
+      <div id="tab-ast" class="tab-content">
+        <div class="empty-state" id="astEmpty">
+          <div class="empty-icon">🌲</div>
+          <p>Compile code to see AST</p>
+        </div>
+        <div id="astOutput" class="ast-canvas-wrap">
+          <svg id="astSvg" class="ast-svg"></svg>
+        </div>
+      </div>
+ 
+      <div id="tab-tokens" class="tab-content">
+        <div class="empty-state" id="tokensEmpty">
+          <div class="empty-icon">◈</div>
+          <p>Compile code to see tokens</p>
+        </div>
+        <div id="tokensOutput" class="tokens-grid"></div>
+      </div>
+ 
+      <div id="tab-ir" class="tab-content">
+        <div class="empty-state" id="irEmpty">
+          <div class="empty-icon">⊞</div>
+          <p>Compile code to see IR</p>
+        </div>
+        <div id="irOutput" class="ir-output"></div>
+      </div>
+    </div>
+ 
+    <!-- RIGHT: symbol table, stack, errors -->
+    <div class="pane pane-sidebar">
+ 
+      <div class="sidebar-section">
+        <div class="pane-header">
+          <span class="pane-title">SYMBOL TABLE</span>
+          <span id="symCount" class="pane-meta">0 vars</span>
+        </div>
+        <div id="symbolTable" class="symbol-table">
+          <div class="empty-state-sm">Symbol table will populate during execution</div>
+        </div>
+      </div>
+ 
+      <div class="sidebar-section">
+        <div class="pane-header">
+          <span class="pane-title">EXECUTION STACK</span>
+          <span id="stackDepth" class="pane-meta">depth: 0</span>
+        </div>
+        <div id="execStack" class="exec-stack">
+          <div class="empty-state-sm">Execute code to see call stack</div>
+        </div>
+      </div>
+ 
+      <div class="sidebar-section sidebar-errors">
+        <div class="pane-header">
+          <span class="pane-title">ERRORS</span>
+          <span id="errCount" class="pane-meta">0</span>
+        </div>
+        <div id="errorsPanel" class="errors-panel">
+          <div class="no-errors">No errors</div>
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+ 
+  <!-- ── STEP INDICATOR BAR ── -->
+  <div class="step-bar" id="stepBar">
+    <span id="stepInfo" class="step-info">—</span>
+    <div class="step-progress">
+      <div class="step-progress-fill" id="stepFill" style="width:0%"></div>
+    </div>
+    <span id="stepCounter" class="step-info">0 / 0</span>
+  </div>
+ 
+  <!-- ── SCRIPTS (order matters) ── -->
+  <script src="js/utils/helpers.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/components/editor.js"></script>
+  <script src="js/components/symbolTable.js"></script>
+  <script src="js/components/stackView.js"></script>
+  <script src="js/components/pseducode.js"></script>
+  <script src="js/components/controls.js"></script>
+  <script src="js/main.js"></script>
+ 
+</body>
+</html>
